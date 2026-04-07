@@ -34,7 +34,6 @@ class GetProfileUsecase:
         photos: list[Photo]
 
     async def execute(self, request: Request) -> Response:
-        """Get profile and its active photos. Returns Response with profile=None if not found."""
         async with self._profile_repository.context() as session:
             profile = await self._profile_repository.get_profile_by_telegram_id(
                 session=session,

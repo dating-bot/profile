@@ -1,0 +1,56 @@
+services:
+  profile_server:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: profile-server
+    restart: unless-stopped
+    volumes:
+      # Docker DNS names for postgres + shared infra (RabbitMQ, MinIO on dating_bot_net).
+      - ./config.docker.toml:/app/config.toml:ro
+    networks:
+      - profile-network
+      - dating_bot
+    command: ["uv", "-q", "run", "python3", "-m", "profile_service"]
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      profile_postgres:
+        condition: service_healthy
+
+  profile_postgres:
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    image: dating-bot-profile-postgres:pg17-postgis-pgvector
+    container_name: profile-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-profile_service}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      start_period: 20s
+      interval: 60s
+      timeout: 5s
+      retries: 5
+    networks:
+      - profile-network
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  profile-network: {}
+  dating_bot:
+    external: true
+    name: dating_bot_net

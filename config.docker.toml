@@ -6,8 +6,8 @@ host = "0.0.0.0"
 port = 50051
 
 [postgres]
-host = "localhost"
-port = 5433
+host = "profile_postgres"
+port = 5432
 username = "postgres"
 password = "postgres"
 database = "profile_service"
@@ -16,14 +16,14 @@ pool_size = 10
 pool_max_overflow = 20
 
 [rabbitmq]
-host = "localhost"
+host = "rabbitmq"
 port = 5672
 username = "guest"
 password = "guest"
 vhost = "/"
 
 [minio]
-endpoint = "localhost:9000"
+endpoint = "minio:9000"
 access_key = "minioadmin"
 secret_key = "minioadmin"
 bucket = "profiles"

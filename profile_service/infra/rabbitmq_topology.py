@@ -50,6 +50,11 @@ class RabbitMQTopology:
             return None
         return self.exchanges.get(exchange_name, None)
 
+    def get_for_consuming(self, queue: str) -> aio_pika.abc.AbstractQueue | None:
+        if queue not in self.consume:
+            return None
+        return self.queues.get(queue, None)
+
     def get_channel(self, queue: str) -> aio_pika.abc.AbstractChannel | None:
         return self.channels.get(queue, None)
 

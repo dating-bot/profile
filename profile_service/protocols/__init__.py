@@ -1,5 +1,4 @@
-from profile_service.protocols.events.protocol import EventPublisherProtocol
-from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
-from profile_service.protocols.storage.protocol import StorageProtocol
-
-__all__ = ["EventPublisherProtocol", "ProfileRepositoryProtocol", "StorageProtocol"]
+from profile_service.protocols.events.protocol import MessageQueueProtocol as MessageQueueProtocol
+from profile_service.protocols.profile.repository import ProfileRepositoryProtocol as ProfileRepositoryProtocol
+from profile_service.protocols.storage.protocol import StorageError as StorageError
+from profile_service.protocols.storage.protocol import StorageProtocol as StorageProtocol

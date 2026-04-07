@@ -4,7 +4,7 @@ import signal
 import grpclib.server
 import structlog
 
-from profile_service import infra
+from profile_service import infra, protocols
 from profile_service.app.server import di
 from profile_service.app.server.grpc_handler import ProfileServiceHandler
 from profile_service.app.server.health import create_health_service
@@ -41,10 +41,7 @@ async def main() -> None:
     grpc_handler_instance = await di.container.get(ProfileServiceHandler)
     grpc_config = await di.container.get(infra.GrpcServerConfig)
 
-    # Ensure MinIO bucket exists on startup.
-    from profile_service.protocols.storage.protocol import StorageProtocol  # noqa: PLC0415
-
-    storage = await di.container.get(StorageProtocol)
+    storage = await di.container.get(protocols.StorageProtocol)
     await storage.ensure_bucket()
 
     shutdown_event = asyncio.Event()

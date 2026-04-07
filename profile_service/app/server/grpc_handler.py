@@ -12,6 +12,7 @@ from profile_service.domain.profile import Gender
 from profile_service.usecases.create_profile.usecase import CreateProfileAlreadyExistsError, CreateProfileUsecase
 from profile_service.usecases.get_presigned_url.usecase import GetPresignedUrlNotFoundError, GetPresignedUrlUsecase
 from profile_service.usecases.get_profile.usecase import GetProfileUsecase
+from profile_service.usecases.set_geo.usecase import SetGeoNotFoundError, SetGeoUsecase
 from profile_service.usecases.update_profile.usecase import UpdateProfileNotFoundError, UpdateProfileUsecase
 from profile_service.usecases.upload_photo.usecase import UploadPhotoProfileNotFoundError, UploadPhotoUsecase
 
@@ -35,6 +36,7 @@ class ProfileServiceHandler(ProfileServiceBase):
     _create_profile_usecase: CreateProfileUsecase
     _get_profile_usecase: GetProfileUsecase
     _update_profile_usecase: UpdateProfileUsecase
+    _set_geo_usecase: SetGeoUsecase
     _upload_photo_usecase: UploadPhotoUsecase
     _get_presigned_url_usecase: GetPresignedUrlUsecase
 
@@ -55,6 +57,9 @@ class ProfileServiceHandler(ProfileServiceBase):
         if gender is None:
             raise GRPCError(Status.INVALID_ARGUMENT, "gender is required")
 
+        lat = request.latitude if request.HasField("latitude") else None
+        lon = request.longitude if request.HasField("longitude") else None
+
         try:
             response = await self._create_profile_usecase.execute(
                 CreateProfileUsecase.Request(
@@ -64,10 +69,15 @@ class ProfileServiceHandler(ProfileServiceBase):
                     city=request.city,
                     bio=request.bio,
                     gender=gender,
+                    latitude=lat,
+                    longitude=lon,
                 )
             )
         except CreateProfileAlreadyExistsError as e:
             raise GRPCError(Status.ALREADY_EXISTS, str(e)) from e
+        except Exception as e:
+            log.exception("unexpected error in CreateProfile", telegram_id=request.telegram_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
 
         return profile_pb2.CreateProfileResponse(profile_id=response.profile.id)
 
@@ -77,14 +87,20 @@ class ProfileServiceHandler(ProfileServiceBase):
         if not request.telegram_id:
             raise GRPCError(Status.INVALID_ARGUMENT, "telegram_id is required")
 
-        response = await self._get_profile_usecase.execute(GetProfileUsecase.Request(telegram_id=request.telegram_id))
+        try:
+            response = await self._get_profile_usecase.execute(
+                GetProfileUsecase.Request(telegram_id=request.telegram_id)
+            )
+        except Exception as e:
+            log.exception("unexpected error in GetProfile", telegram_id=request.telegram_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
 
         if response.profile is None:
             return profile_pb2.GetProfileResponse(found=False)
 
         photos = [profile_pb2.PhotoInfo(photo_id=p.id, is_active=p.is_active) for p in response.photos]
 
-        return profile_pb2.GetProfileResponse(
+        proto = profile_pb2.GetProfileResponse(
             found=True,
             profile_id=response.profile.id,
             name=response.profile.name or "",
@@ -94,6 +110,11 @@ class ProfileServiceHandler(ProfileServiceBase):
             gender=_GENDER_TO_PROTO[response.profile.gender],
             photos=photos,
         )
+        if response.profile.latitude is not None:
+            proto.latitude = response.profile.latitude
+        if response.profile.longitude is not None:
+            proto.longitude = response.profile.longitude
+        return proto
 
     @override
     @unary
@@ -102,7 +123,7 @@ class ProfileServiceHandler(ProfileServiceBase):
             raise GRPCError(Status.INVALID_ARGUMENT, "telegram_id is required")
 
         try:
-            await self._update_profile_usecase.execute(
+            _ = await self._update_profile_usecase.execute(
                 UpdateProfileUsecase.Request(
                     telegram_id=request.telegram_id,
                     name=request.name,
@@ -113,8 +134,33 @@ class ProfileServiceHandler(ProfileServiceBase):
             )
         except UpdateProfileNotFoundError as e:
             raise GRPCError(Status.NOT_FOUND, str(e)) from e
+        except Exception as e:
+            log.exception("unexpected error in UpdateProfile", telegram_id=request.telegram_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
 
         return profile_pb2.UpdateProfileResponse(success=True)
+
+    @override
+    @unary
+    async def SetGeo(self, request: profile_pb2.SetGeoRequest) -> profile_pb2.SetGeoResponse:
+        if not request.telegram_id:
+            raise GRPCError(Status.INVALID_ARGUMENT, "telegram_id is required")
+
+        try:
+            _ = await self._set_geo_usecase.execute(
+                SetGeoUsecase.Request(
+                    telegram_id=request.telegram_id,
+                    latitude=request.latitude,
+                    longitude=request.longitude,
+                )
+            )
+        except SetGeoNotFoundError as e:
+            raise GRPCError(Status.NOT_FOUND, str(e)) from e
+        except Exception as e:
+            log.exception("unexpected error in SetGeo", telegram_id=request.telegram_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
+
+        return profile_pb2.SetGeoResponse(success=True)
 
     @override
     @unary
@@ -134,6 +180,9 @@ class ProfileServiceHandler(ProfileServiceBase):
             )
         except UploadPhotoProfileNotFoundError as e:
             raise GRPCError(Status.NOT_FOUND, str(e)) from e
+        except Exception as e:
+            log.exception("unexpected error in UploadPhoto", telegram_id=request.telegram_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
 
         return profile_pb2.UploadPhotoResponse(
             photo_id=response.photo.id,
@@ -152,5 +201,8 @@ class ProfileServiceHandler(ProfileServiceBase):
             )
         except GetPresignedUrlNotFoundError as e:
             raise GRPCError(Status.NOT_FOUND, str(e)) from e
+        except Exception as e:
+            log.exception("unexpected error in GetPresignedUrl", photo_id=request.photo_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
 
         return profile_pb2.GetPresignedUrlResponse(url=response.url)

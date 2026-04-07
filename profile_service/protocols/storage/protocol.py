@@ -2,6 +2,10 @@ from dataclasses import dataclass
 from typing import Protocol
 
 
+class StorageError(Exception):
+    """Raised when object storage operation fails."""
+
+
 class StorageProtocol(Protocol):
     @dataclass
     class PutRequest:
