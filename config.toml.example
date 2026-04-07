@@ -1,0 +1,30 @@
+debug = false
+
+[grpc_server]
+host = "0.0.0.0"
+port = 50051
+
+[postgres]
+host = "localhost"
+port = 5432
+username = "postgres"
+password = "postgres"
+database = "profile_service"
+should_log_sql = false
+pool_size = 10
+pool_max_overflow = 20
+
+[rabbitmq]
+host = "localhost"
+port = 5672
+username = "guest"
+password = "guest"
+vhost = "/"
+
+[minio]
+endpoint = "localhost:9000"
+access_key = "minioadmin"
+secret_key = "minioadmin"
+bucket = "profiles"
+secure = false
+presigned_ttl_seconds = 900

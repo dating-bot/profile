@@ -1,0 +1,87 @@
+syntax = "proto3";
+package profile_api.v1;
+
+service ProfileService {
+  rpc Health(HealthRequest) returns (HealthResponse);
+  rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc UploadPhoto(UploadPhotoRequest) returns (UploadPhotoResponse);
+  rpc GetPresignedUrl(GetPresignedUrlRequest) returns (GetPresignedUrlResponse);
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool ok = 1;
+}
+
+message CreateProfileRequest {
+  int64 telegram_id = 1;
+  string name = 2;
+  int32 age = 3;
+  string city = 4;
+  string bio = 5;
+  Gender gender = 6;
+}
+
+message CreateProfileResponse {
+  int64 profile_id = 1;
+}
+
+message GetProfileRequest {
+  int64 telegram_id = 1;
+}
+
+message GetProfileResponse {
+  bool found = 1;
+  int64 profile_id = 2;
+  string name = 3;
+  int32 age = 4;
+  string city = 5;
+  string bio = 6;
+  Gender gender = 7;
+  repeated PhotoInfo photos = 8;
+}
+
+message PhotoInfo {
+  int64 photo_id = 1;
+  bool is_active = 2;
+}
+
+message UpdateProfileRequest {
+  int64 telegram_id = 1;
+  string name = 2;
+  int32 age = 3;
+  string city = 4;
+  string bio = 5;
+}
+
+message UpdateProfileResponse {
+  bool success = 1;
+}
+
+message UploadPhotoRequest {
+  int64 telegram_id = 1;
+  bytes data = 2;
+  string content_type = 3;
+}
+
+message UploadPhotoResponse {
+  int64 photo_id = 1;
+  string minio_key = 2;
+}
+
+message GetPresignedUrlRequest {
+  int64 photo_id = 1;
+}
+
+message GetPresignedUrlResponse {
+  string url = 1;
+}
+
+enum Gender {
+  GENDER_UNSPECIFIED = 0;
+  GENDER_MALE = 1;
+  GENDER_FEMALE = 2;
+}
