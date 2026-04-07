@@ -37,6 +37,8 @@ class CreateProfileUsecase:
         city: str
         bio: str
         gender: Gender
+        latitude: float | None = None
+        longitude: float | None = None
 
     @dataclass
     class Response:
@@ -73,6 +75,8 @@ class CreateProfileUsecase:
                     city=request.city,
                     bio=request.bio,
                     gender=request.gender,
+                    latitude=request.latitude,
+                    longitude=request.longitude,
                 ),
             )
 

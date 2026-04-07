@@ -2,9 +2,11 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import final, override
+from typing import cast, final, override
 
 import sqlalchemy as sa
+import structlog
+from geoalchemy2.elements import WKTElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from profile_service.adapters.postgres_models.models import PhotoORM, ProfileORM, UserORM
@@ -12,6 +14,14 @@ from profile_service.domain.photo import Photo
 from profile_service.domain.profile import Profile
 from profile_service.infra.postgres import AsyncSessionFactory
 from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
+
+log = structlog.stdlib.get_logger("profile_service.adapters.profile.postgres")
+
+
+def _point_wkt(lat: float | None, lon: float | None) -> WKTElement | None:
+    if lat is None or lon is None:
+        return None
+    return WKTElement(f"POINT({lon} {lat})", srid=4326)
 
 
 @final
@@ -44,7 +54,9 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
             return user_id
 
         result = await session.execute(sa.insert(UserORM).values(telegram_id=request.telegram_id).returning(UserORM.id))
-        return result.scalar_one()
+        user_id = result.scalar_one()
+        log.debug("user created", telegram_id=request.telegram_id, user_id=user_id)
+        return user_id
 
     @override
     async def create_profile(
@@ -62,6 +74,7 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 age=request.age,
                 gender=request.gender.value,
                 city=request.city,
+                location=_point_wkt(request.latitude, request.longitude),
             )
             .returning(
                 ProfileORM.id,
@@ -71,6 +84,7 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.age,
                 ProfileORM.gender,
                 ProfileORM.city,
+                ProfileORM.location,
                 ProfileORM.ai_quality_score,
                 ProfileORM.created_at,
                 ProfileORM.updated_at,
@@ -78,7 +92,9 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
         )
         row = result.mappings().one()
         orm = ProfileORM(**dict(row))
-        return orm.to_domain(telegram_id=request.telegram_id)
+        profile = orm.to_domain(telegram_id=request.telegram_id)
+        log.debug("profile created", profile_id=profile.id, user_id=request.user_id)
+        return profile
 
     @override
     async def get_profile_by_telegram_id(
@@ -95,7 +111,8 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
         row = result.one_or_none()
         if row is None:
             return None
-        profile_orm, tg_id = row
+        profile_orm = cast("ProfileORM", row[0])
+        tg_id = cast("int", row[1])
         return profile_orm.to_domain(telegram_id=tg_id)
 
     @override
@@ -126,6 +143,7 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.age,
                 ProfileORM.gender,
                 ProfileORM.city,
+                ProfileORM.location,
                 ProfileORM.ai_quality_score,
                 ProfileORM.created_at,
                 ProfileORM.updated_at,
@@ -133,7 +151,49 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
         )
         row = result.mappings().one()
         orm = ProfileORM(**dict(row))
-        return orm.to_domain(telegram_id=request.telegram_id)
+        profile = orm.to_domain(telegram_id=request.telegram_id)
+        log.debug("profile updated", profile_id=profile.id, telegram_id=request.telegram_id)
+        return profile
+
+    @override
+    async def set_geo(
+        self,
+        session: AsyncSession,
+        request: ProfileRepositoryProtocol.SetGeoRequest,
+    ) -> Profile:
+        result = await session.execute(
+            sa
+            .update(ProfileORM)
+            .where(
+                ProfileORM.user_id
+                == sa.select(UserORM.id).where(UserORM.telegram_id == request.telegram_id).scalar_subquery()
+            )
+            .values(
+                location=_point_wkt(request.latitude, request.longitude),
+                updated_at=datetime.now(UTC),
+            )
+            .returning(
+                ProfileORM.id,
+                ProfileORM.user_id,
+                ProfileORM.name,
+                ProfileORM.bio,
+                ProfileORM.age,
+                ProfileORM.gender,
+                ProfileORM.city,
+                ProfileORM.location,
+                ProfileORM.ai_quality_score,
+                ProfileORM.created_at,
+                ProfileORM.updated_at,
+            )
+        )
+        row = result.mappings().one_or_none()
+        if row is None:
+            msg = f"profile not found for telegram_id={request.telegram_id}"
+            raise ValueError(msg)
+        orm = ProfileORM(**dict(row))
+        profile = orm.to_domain(telegram_id=request.telegram_id)
+        log.debug("profile geo updated", profile_id=profile.id, telegram_id=request.telegram_id)
+        return profile
 
     @override
     async def create_photo(
@@ -158,7 +218,9 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
             )
         )
         row = result.mappings().one()
-        return Photo.model_validate(row)
+        photo = Photo.model_validate(row)
+        log.debug("photo created", photo_id=photo.id, profile_id=request.profile_id)
+        return photo
 
     @override
     async def get_photo_by_id(

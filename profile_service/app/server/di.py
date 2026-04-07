@@ -17,7 +17,7 @@ class InfraProvider(dishka.Provider):
     async_session_factory = dishka.provide(staticmethod(infra.provide_async_session_factory))
     rabbitmq_connection = dishka.provide(staticmethod(infra.provide_rabbitmq_connection))
     rabbitmq_topology = dishka.provide(staticmethod(infra.provide_rabbitmq_topology))
-    minio_client = dishka.provide(staticmethod(infra.provide_minio_client))
+    aioboto3_session = dishka.provide(staticmethod(infra.provide_aioboto3_session))
 
 
 @final
@@ -32,9 +32,9 @@ class AdapterProvider(dishka.Provider):
         source=adapters.MinIOStorageAdapter,
         provides=protocols.StorageProtocol,
     )
-    event_publisher = dishka.provide(
-        source=adapters.RabbitMQEventPublisherAdapter,
-        provides=protocols.EventPublisherProtocol,
+    message_queue = dishka.provide(
+        source=adapters.RabbitMQAdapter,
+        provides=protocols.MessageQueueProtocol,
     )
 
 
@@ -45,6 +45,7 @@ class UsecaseProvider(dishka.Provider):
     create_profile_usecase = dishka.provide(usecases.CreateProfileUsecase)
     get_profile_usecase = dishka.provide(usecases.GetProfileUsecase)
     update_profile_usecase = dishka.provide(usecases.UpdateProfileUsecase)
+    set_geo_usecase = dishka.provide(usecases.SetGeoUsecase)
     upload_photo_usecase = dishka.provide(usecases.UploadPhotoUsecase)
 
     @dishka.provide

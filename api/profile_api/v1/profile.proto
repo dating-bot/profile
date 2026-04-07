@@ -6,6 +6,7 @@ service ProfileService {
   rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc SetGeo(SetGeoRequest) returns (SetGeoResponse);
   rpc UploadPhoto(UploadPhotoRequest) returns (UploadPhotoResponse);
   rpc GetPresignedUrl(GetPresignedUrlRequest) returns (GetPresignedUrlResponse);
 }
@@ -23,6 +24,8 @@ message CreateProfileRequest {
   string city = 4;
   string bio = 5;
   Gender gender = 6;
+  optional double latitude = 7;
+  optional double longitude = 8;
 }
 
 message CreateProfileResponse {
@@ -42,6 +45,8 @@ message GetProfileResponse {
   string bio = 6;
   Gender gender = 7;
   repeated PhotoInfo photos = 8;
+  optional double latitude = 9;
+  optional double longitude = 10;
 }
 
 message PhotoInfo {
@@ -58,6 +63,16 @@ message UpdateProfileRequest {
 }
 
 message UpdateProfileResponse {
+  bool success = 1;
+}
+
+message SetGeoRequest {
+  int64 telegram_id = 1;
+  double latitude = 2;
+  double longitude = 3;
+}
+
+message SetGeoResponse {
   bool success = 1;
 }
 

@@ -18,6 +18,8 @@ class Profile(pydantic.BaseModel):
     age: int | None = pydantic.Field(None, description="Age in years")
     gender: Gender | None = pydantic.Field(None, description="Gender")
     city: str | None = pydantic.Field(None, description="City name")
+    latitude: float | None = pydantic.Field(None, description="WGS84 latitude")
+    longitude: float | None = pydantic.Field(None, description="WGS84 longitude")
     ai_quality_score: float | None = pydantic.Field(None, description="AI quality score 0–10")
     created_at: datetime = pydantic.Field(
         default_factory=lambda: datetime.now(tz=UTC),

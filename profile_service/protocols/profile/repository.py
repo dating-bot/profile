@@ -30,6 +30,8 @@ class ProfileRepositoryProtocol[SessionT](Protocol):
         city: str
         bio: str
         gender: Gender
+        latitude: float | None = None
+        longitude: float | None = None
 
     async def create_profile(self, session: SessionT, request: CreateProfileRequest) -> Profile: ...
 
@@ -44,6 +46,14 @@ class ProfileRepositoryProtocol[SessionT](Protocol):
         bio: str
 
     async def update_profile(self, session: SessionT, request: UpdateProfileRequest) -> Profile: ...
+
+    @dataclass
+    class SetGeoRequest:
+        telegram_id: int
+        latitude: float
+        longitude: float
+
+    async def set_geo(self, session: SessionT, request: SetGeoRequest) -> Profile: ...
 
     @dataclass
     class CreatePhotoRequest:

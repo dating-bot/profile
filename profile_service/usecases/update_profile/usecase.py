@@ -6,7 +6,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from profile_service.domain.profile import Profile
-from profile_service.protocols.events.protocol import EventPublisherProtocol
+from profile_service.protocols.events.protocol import MessageQueueProtocol, PushMessage
 from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
 
 log = structlog.stdlib.get_logger("profile_service.usecases.UpdateProfileUsecase")
@@ -28,10 +28,10 @@ class UpdateProfileUsecase:
         self,
         *,
         profile_repository: ProfileRepositoryProtocol[AsyncSession],
-        event_publisher: EventPublisherProtocol,
+        message_queue: MessageQueueProtocol,
     ) -> None:
         self._profile_repository = profile_repository
-        self._event_publisher = event_publisher
+        self._message_queue = message_queue
 
     @dataclass
     class Request:
@@ -71,11 +71,12 @@ class UpdateProfileUsecase:
                 ),
             )
 
-        await self._event_publisher.publish(
-            EventPublisherProtocol.PublishRequest(
-                routing_key=PROFILE_UPDATED_ROUTING_KEY,
-                payload=json.dumps({"profile_id": profile.id, "telegram_id": request.telegram_id}).encode(),
-            )
+        await self._message_queue.push(
+            PROFILE_UPDATED_ROUTING_KEY,
+            PushMessage(
+                body=json.dumps({"profile_id": profile.id, "telegram_id": request.telegram_id}).encode(),
+                content_type="application/json",
+            ),
         )
 
         log.info("profile updated", telegram_id=request.telegram_id, profile_id=profile.id)

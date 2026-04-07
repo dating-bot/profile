@@ -33,18 +33,13 @@ class GetPresignedUrlUsecase:
 
     @dataclass
     class Request:
-        """Request to get a presigned URL for a photo."""
-
         photo_id: int
 
     @dataclass
     class Response:
-        """Presigned URL for photo."""
-
         url: str
 
     async def execute(self, request: Request) -> Response:
-        """Generate presigned MinIO URL (TTL from config, default 900s)."""
         async with self._profile_repository.context() as session:
             photo = await self._profile_repository.get_photo_by_id(
                 session=session,

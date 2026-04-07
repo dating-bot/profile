@@ -1,4 +1,8 @@
-from minio import Minio
+from contextlib import AbstractAsyncContextManager
+from typing import cast
+
+import aioboto3
+from botocore.config import Config
 from pydantic import BaseModel, Field
 
 
@@ -10,11 +14,29 @@ class MinIOConfig(BaseModel):
     secure: bool = Field(default=False, description="Use HTTPS")
     presigned_ttl_seconds: int = Field(default=900, description="Presigned URL TTL in seconds")
 
+    @property
+    def endpoint_url(self) -> str:
+        scheme = "https" if self.secure else "http"
+        return f"{scheme}://{self.endpoint}"
 
-def provide_minio_client(config: MinIOConfig) -> Minio:
-    return Minio(
-        endpoint=config.endpoint,
-        access_key=config.access_key,
-        secret_key=config.secret_key,
-        secure=config.secure,
+
+def provide_aioboto3_session() -> aioboto3.Session:
+    return aioboto3.Session()
+
+
+def create_s3_client(*, session: aioboto3.Session, config: MinIOConfig) -> AbstractAsyncContextManager[object]:
+    """S3-compatible client (MinIO) with path-style addressing and SigV4."""
+    return cast(
+        "AbstractAsyncContextManager[object]",
+        session.client(
+            "s3",
+            endpoint_url=config.endpoint_url,
+            aws_access_key_id=config.access_key,
+            aws_secret_access_key=config.secret_key,
+            region_name="us-east-1",
+            config=Config(
+                signature_version="s3v4",
+                s3={"addressing_style": "path"},
+            ),
+        ),
     )
