@@ -8,6 +8,7 @@ service ProfileService {
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
   rpc SetGeo(SetGeoRequest) returns (SetGeoResponse);
   rpc UploadPhoto(UploadPhotoRequest) returns (UploadPhotoResponse);
+  rpc DeletePhoto(DeletePhotoRequest) returns (DeletePhotoResponse);
   rpc GetPresignedUrl(GetPresignedUrlRequest) returns (GetPresignedUrlResponse);
 }
 
@@ -85,6 +86,15 @@ message UploadPhotoRequest {
 message UploadPhotoResponse {
   int64 photo_id = 1;
   string minio_key = 2;
+}
+
+message DeletePhotoRequest {
+  int64 telegram_id = 1;
+  int64 photo_id = 2;
+}
+
+message DeletePhotoResponse {
+  bool success = 1;
 }
 
 message GetPresignedUrlRequest {

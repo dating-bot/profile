@@ -6,4 +6,5 @@ from profile_service.usecases.get_profile.usecase import GetProfileUsecase as Ge
 from profile_service.usecases.set_geo.usecase import SetGeoUsecase as SetGeoUsecase
 from profile_service.usecases.update_profile.usecase import UpdateProfileError as UpdateProfileError
 from profile_service.usecases.update_profile.usecase import UpdateProfileUsecase as UpdateProfileUsecase
+from profile_service.usecases.delete_photo.usecase import DeletePhotoUsecase as DeletePhotoUsecase
 from profile_service.usecases.upload_photo.usecase import UploadPhotoUsecase as UploadPhotoUsecase

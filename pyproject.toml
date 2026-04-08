@@ -73,7 +73,7 @@ reportMissingImports = "error"
 reportMissingTypeStubs = false
 reportUnknownMemberType = false
 reportUnusedParameter = "warning"
-exclude = ["**/.venv", "**/__pycache__", "profile_api", "alembic", "profile_service/tests"]
+exclude = ["**/.venv", "**/__pycache__", "profile_api", "alembic", "profile_service/tests", "scripts", "scripts/protogen.py"]
 typeCheckingMode = "recommended"
 
 [tool.mypy]
@@ -81,7 +81,8 @@ exclude = [".*_test.py", "profile_api", "scripts"]
 plugins = "pydantic.mypy"
 
 [tool.ruff]
-exclude = [".venv", "profile_api"]
+exclude = [".venv", "profile_api", "scripts", "scripts/protogen.py"]
+force-exclude = true
 line-length = 120
 indent-width = 4
 target-version = "py313"

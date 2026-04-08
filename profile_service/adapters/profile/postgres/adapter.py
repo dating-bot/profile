@@ -245,3 +245,25 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
             .order_by(PhotoORM.created_at)
         )
         return [row.to_domain() for row in result.scalars().all()]
+
+    @override
+    async def get_photo_owned_by_telegram(
+        self,
+        session: AsyncSession,
+        *,
+        telegram_id: int,
+        photo_id: int,
+    ) -> Photo | None:
+        result = await session.execute(
+            sa
+            .select(PhotoORM)
+            .join(ProfileORM, PhotoORM.profile_id == ProfileORM.id)
+            .join(UserORM, ProfileORM.user_id == UserORM.id)
+            .where(UserORM.telegram_id == telegram_id, PhotoORM.id == photo_id)
+        )
+        orm = result.scalar_one_or_none()
+        return orm.to_domain() if orm is not None else None
+
+    @override
+    async def delete_photo_by_id(self, session: AsyncSession, photo_id: int) -> None:
+        await session.execute(sa.delete(PhotoORM).where(PhotoORM.id == photo_id))
