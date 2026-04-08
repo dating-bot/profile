@@ -3,6 +3,7 @@ from typing import final
 
 import sqlalchemy as sa
 from geoalchemy2 import Geography
+from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -46,7 +47,7 @@ class ProfileORM(Base):
     age: Mapped[int | None] = mapped_column(sa.Integer(), nullable=True)
     gender: Mapped[str | None] = mapped_column(sa.String(16), nullable=True)
     city: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
-    location: Mapped[object | None] = mapped_column(
+    location: Mapped[WKBElement | None] = mapped_column(
         Geography(geometry_type="POINT", srid=4326, spatial_index=False),
         nullable=True,
     )

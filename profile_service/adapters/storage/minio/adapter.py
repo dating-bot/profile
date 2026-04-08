@@ -26,6 +26,8 @@ class _S3Client(Protocol):
         ContentType: str,
     ) -> None: ...
 
+    async def delete_object(self, *, Bucket: str, Key: str) -> None: ...
+
     async def generate_presigned_url(
         self,
         client_method: str,
@@ -93,6 +95,12 @@ class MinIOStorageAdapter(StorageProtocol):
                 ContentType=request.content_type,
             )
         log.debug("object uploaded", bucket=self.minio_config.bucket, key=request.key)
+
+    @override
+    async def delete_object(self, key: str) -> None:
+        async with _s3_op("delete_object"), self._s3_client() as client:
+            await client.delete_object(Bucket=self.minio_config.bucket, Key=key)
+        log.debug("object deleted", bucket=self.minio_config.bucket, key=key)
 
     @override
     async def get_presigned_url(self, key: str, ttl_seconds: int) -> str:

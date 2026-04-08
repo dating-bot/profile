@@ -14,6 +14,7 @@ from profile_service.usecases.get_presigned_url.usecase import GetPresignedUrlNo
 from profile_service.usecases.get_profile.usecase import GetProfileUsecase
 from profile_service.usecases.set_geo.usecase import SetGeoNotFoundError, SetGeoUsecase
 from profile_service.usecases.update_profile.usecase import UpdateProfileNotFoundError, UpdateProfileUsecase
+from profile_service.usecases.delete_photo.usecase import DeletePhotoNotFoundError, DeletePhotoUsecase
 from profile_service.usecases.upload_photo.usecase import UploadPhotoProfileNotFoundError, UploadPhotoUsecase
 
 log = structlog.stdlib.get_logger("profile_service.grpc")
@@ -38,6 +39,7 @@ class ProfileServiceHandler(ProfileServiceBase):
     _update_profile_usecase: UpdateProfileUsecase
     _set_geo_usecase: SetGeoUsecase
     _upload_photo_usecase: UploadPhotoUsecase
+    _delete_photo_usecase: DeletePhotoUsecase
     _get_presigned_url_usecase: GetPresignedUrlUsecase
 
     @override
@@ -188,6 +190,29 @@ class ProfileServiceHandler(ProfileServiceBase):
             photo_id=response.photo.id,
             minio_key=response.photo.minio_key,
         )
+
+    @override
+    @unary
+    async def DeletePhoto(self, request: profile_pb2.DeletePhotoRequest) -> profile_pb2.DeletePhotoResponse:
+        if not request.telegram_id:
+            raise GRPCError(Status.INVALID_ARGUMENT, "telegram_id is required")
+        if not request.photo_id:
+            raise GRPCError(Status.INVALID_ARGUMENT, "photo_id is required")
+
+        try:
+            _ = await self._delete_photo_usecase.execute(
+                DeletePhotoUsecase.Request(
+                    telegram_id=request.telegram_id,
+                    photo_id=request.photo_id,
+                )
+            )
+        except DeletePhotoNotFoundError as e:
+            raise GRPCError(Status.NOT_FOUND, str(e)) from e
+        except Exception as e:
+            log.exception("unexpected error in DeletePhoto", telegram_id=request.telegram_id, photo_id=request.photo_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
+
+        return profile_pb2.DeletePhotoResponse(success=True)
 
     @override
     @unary

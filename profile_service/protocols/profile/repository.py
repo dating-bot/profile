@@ -65,3 +65,15 @@ class ProfileRepositoryProtocol[SessionT](Protocol):
     async def get_photo_by_id(self, session: SessionT, photo_id: int) -> Photo | None: ...
 
     async def get_active_photos_by_profile(self, session: SessionT, profile_id: int) -> list[Photo]: ...
+
+    async def get_photo_owned_by_telegram(
+        self,
+        session: SessionT,
+        *,
+        telegram_id: int,
+        photo_id: int,
+    ) -> Photo | None:
+        """Фото по id, если оно принадлежит профилю с данным telegram_id."""
+
+    async def delete_photo_by_id(self, session: SessionT, photo_id: int) -> None:
+        """Удалить строку фото (после проверки владельца)."""

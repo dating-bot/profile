@@ -47,6 +47,7 @@ class UsecaseProvider(dishka.Provider):
     update_profile_usecase = dishka.provide(usecases.UpdateProfileUsecase)
     set_geo_usecase = dishka.provide(usecases.SetGeoUsecase)
     upload_photo_usecase = dishka.provide(usecases.UploadPhotoUsecase)
+    delete_photo_usecase = dishka.provide(usecases.DeletePhotoUsecase)
 
     @dishka.provide
     def get_presigned_url_usecase(
