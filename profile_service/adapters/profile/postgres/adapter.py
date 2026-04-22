@@ -7,10 +7,12 @@ from typing import cast, final, override
 import sqlalchemy as sa
 import structlog
 from geoalchemy2.elements import WKTElement
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from profile_service.adapters.postgres_models.models import PhotoORM, ProfileORM, UserORM
+from profile_service.adapters.postgres_models.models import PhotoORM, PreferenceORM, ProfileORM, UserORM
 from profile_service.domain.photo import Photo
+from profile_service.domain.preferences import Preferences
 from profile_service.domain.profile import Profile
 from profile_service.infra.postgres import AsyncSessionFactory
 from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
@@ -107,6 +109,25 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
             .select(ProfileORM, UserORM.telegram_id)
             .join(UserORM, UserORM.id == ProfileORM.user_id)
             .where(UserORM.telegram_id == telegram_id)
+        )
+        row = result.one_or_none()
+        if row is None:
+            return None
+        profile_orm = cast("ProfileORM", row[0])
+        tg_id = cast("int", row[1])
+        return profile_orm.to_domain(telegram_id=tg_id)
+
+    @override
+    async def get_profile_by_id(
+        self,
+        session: AsyncSession,
+        profile_id: int,
+    ) -> Profile | None:
+        result = await session.execute(
+            sa
+            .select(ProfileORM, UserORM.telegram_id)
+            .join(UserORM, UserORM.id == ProfileORM.user_id)
+            .where(ProfileORM.id == profile_id)
         )
         row = result.one_or_none()
         if row is None:
@@ -267,3 +288,68 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
     @override
     async def delete_photo_by_id(self, session: AsyncSession, photo_id: int) -> None:
         await session.execute(sa.delete(PhotoORM).where(PhotoORM.id == photo_id))
+
+    @override
+    async def upsert_preferences(
+        self,
+        session: AsyncSession,
+        request: ProfileRepositoryProtocol.UpsertPreferencesRequest,
+    ) -> Preferences:
+        profile_result = await session.execute(
+            sa
+            .select(ProfileORM.id)
+            .join(UserORM, UserORM.id == ProfileORM.user_id)
+            .where(UserORM.telegram_id == request.telegram_id)
+        )
+        profile_id = profile_result.scalar_one_or_none()
+        if profile_id is None:
+            msg = f"profile not found for telegram_id={request.telegram_id}"
+            raise ValueError(msg)
+
+        result = await session.execute(
+            pg_insert(PreferenceORM)
+            .values(
+                profile_id=profile_id,
+                min_age=request.age_min,
+                max_age=request.age_max,
+                gender=request.gender_pref.value if request.gender_pref else None,
+                max_distance_km=request.max_distance_km,
+            )
+            .on_conflict_do_update(
+                index_elements=["profile_id"],
+                set_={
+                    "min_age": request.age_min,
+                    "max_age": request.age_max,
+                    "gender": request.gender_pref.value if request.gender_pref else None,
+                    "max_distance_km": request.max_distance_km,
+                },
+            )
+            .returning(
+                PreferenceORM.id,
+                PreferenceORM.profile_id,
+                PreferenceORM.min_age,
+                PreferenceORM.max_age,
+                PreferenceORM.gender,
+                PreferenceORM.max_distance_km,
+            )
+        )
+        row = result.mappings().one()
+        orm = PreferenceORM(**dict(row))
+        log.debug("preferences upserted", profile_id=profile_id, telegram_id=request.telegram_id)
+        return orm.to_domain()
+
+    @override
+    async def get_preferences_by_telegram_id(
+        self,
+        session: AsyncSession,
+        telegram_id: int,
+    ) -> Preferences | None:
+        result = await session.execute(
+            sa
+            .select(PreferenceORM)
+            .join(ProfileORM, PreferenceORM.profile_id == ProfileORM.id)
+            .join(UserORM, ProfileORM.user_id == UserORM.id)
+            .where(UserORM.telegram_id == telegram_id)
+        )
+        orm = result.scalar_one_or_none()
+        return orm.to_domain() if orm is not None else None

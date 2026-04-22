@@ -8,6 +8,7 @@ from geoalchemy2.shape import to_shape
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from profile_service.domain.photo import Photo
+from profile_service.domain.preferences import GenderPref, Preferences
 from profile_service.domain.profile import Gender, Profile
 
 
@@ -52,6 +53,8 @@ class ProfileORM(Base):
         nullable=True,
     )
     ai_quality_score: Mapped[float | None] = mapped_column(sa.Float(), nullable=True)
+    is_active: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, server_default=sa.true())
+    boost_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True),
         nullable=False,
@@ -69,6 +72,7 @@ class ProfileORM(Base):
 
     user: Mapped[UserORM] = relationship(back_populates="profile")
     photos: Mapped[list["PhotoORM"]] = relationship(back_populates="profile")
+    preferences: Mapped["PreferenceORM | None"] = relationship(back_populates="profile", uselist=False)
 
     def to_domain(self, telegram_id: int) -> Profile:
         lat: float | None = None
@@ -88,6 +92,8 @@ class ProfileORM(Base):
             latitude=lat,
             longitude=lon,
             ai_quality_score=self.ai_quality_score,
+            is_active=self.is_active,
+            boost_expires_at=self.boost_expires_at,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -144,3 +150,14 @@ class PreferenceORM(Base):
     max_distance_km: Mapped[int | None] = mapped_column(sa.Integer(), nullable=True)
 
     __table_args__: tuple[sa.UniqueConstraint] = (sa.UniqueConstraint("profile_id", name="uq_preferences_profile_id"),)
+
+    profile: Mapped[ProfileORM] = relationship(back_populates="preferences")
+
+    def to_domain(self) -> "Preferences":
+        return Preferences(
+            profile_id=self.profile_id,
+            age_min=self.min_age,
+            age_max=self.max_age,
+            gender_pref=GenderPref(self.gender) if self.gender else None,
+            max_distance_km=self.max_distance_km,
+        )

@@ -21,6 +21,8 @@ class Profile(pydantic.BaseModel):
     latitude: float | None = pydantic.Field(None, description="WGS84 latitude")
     longitude: float | None = pydantic.Field(None, description="WGS84 longitude")
     ai_quality_score: float | None = pydantic.Field(None, description="AI quality score 0–10")
+    is_active: bool = pydantic.Field(default=True, description="Whether profile is active")
+    boost_expires_at: datetime | None = pydantic.Field(None, description="When boost expires")
     created_at: datetime = pydantic.Field(
         default_factory=lambda: datetime.now(tz=UTC),
         description="Creation timestamp",

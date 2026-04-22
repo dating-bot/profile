@@ -1,0 +1,1 @@
+from profile_service.usecases.get_profile_by_id.usecase import GetProfileByIdUsecase as GetProfileByIdUsecase

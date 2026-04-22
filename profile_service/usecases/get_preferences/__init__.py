@@ -1,0 +1,1 @@
+from profile_service.usecases.get_preferences.usecase import GetPreferencesUsecase as GetPreferencesUsecase

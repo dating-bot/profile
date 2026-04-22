@@ -5,11 +5,14 @@ service ProfileService {
   rpc Health(HealthRequest) returns (HealthResponse);
   rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc GetProfileById(GetProfileByIdRequest) returns (GetProfileByIdResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
   rpc SetGeo(SetGeoRequest) returns (SetGeoResponse);
   rpc UploadPhoto(UploadPhotoRequest) returns (UploadPhotoResponse);
   rpc DeletePhoto(DeletePhotoRequest) returns (DeletePhotoResponse);
   rpc GetPresignedUrl(GetPresignedUrlRequest) returns (GetPresignedUrlResponse);
+  rpc SetPreferences(SetPreferencesRequest) returns (SetPreferencesResponse);
+  rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse);
 }
 
 message HealthRequest {}
@@ -48,6 +51,25 @@ message GetProfileResponse {
   repeated PhotoInfo photos = 8;
   optional double latitude = 9;
   optional double longitude = 10;
+}
+
+message GetProfileByIdRequest {
+  int64 profile_id = 1;
+}
+
+message GetProfileByIdResponse {
+  bool found = 1;
+  int64 profile_id = 2;
+  int64 telegram_id = 3;
+  string name = 4;
+  int32 age = 5;
+  string city = 6;
+  string bio = 7;
+  Gender gender = 8;
+  optional double latitude = 9;
+  optional double longitude = 10;
+  bool is_active = 11;
+  int64 boost_expires_at_seconds = 12;
 }
 
 message PhotoInfo {
@@ -109,4 +131,35 @@ enum Gender {
   GENDER_UNSPECIFIED = 0;
   GENDER_MALE = 1;
   GENDER_FEMALE = 2;
+}
+
+enum GenderPref {
+  GENDER_PREF_UNSPECIFIED = 0;
+  GENDER_PREF_MALE = 1;
+  GENDER_PREF_FEMALE = 2;
+  GENDER_PREF_ANY = 3;
+}
+
+message SetPreferencesRequest {
+  int64 telegram_id = 1;
+  int32 age_min = 2;
+  int32 age_max = 3;
+  GenderPref gender_pref = 4;
+  int32 max_distance_km = 5;
+}
+
+message SetPreferencesResponse {
+  bool success = 1;
+}
+
+message GetPreferencesRequest {
+  int64 telegram_id = 1;
+}
+
+message GetPreferencesResponse {
+  bool found = 1;
+  int32 age_min = 2;
+  int32 age_max = 3;
+  GenderPref gender_pref = 4;
+  int32 max_distance_km = 5;
 }

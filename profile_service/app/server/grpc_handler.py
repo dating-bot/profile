@@ -8,16 +8,21 @@ from grpclib.exceptions import GRPCError
 from profile_api.v1 import profile_pb2
 from profile_api.v1.profile_grpc import ProfileServiceBase
 from profile_service.app.server.utils import unary
+from profile_service.domain.preferences import GenderPref
 from profile_service.domain.profile import Gender
 from profile_service.usecases.create_profile.usecase import CreateProfileAlreadyExistsError, CreateProfileUsecase
+from profile_service.usecases.delete_photo.usecase import DeletePhotoNotFoundError, DeletePhotoUsecase
+from profile_service.usecases.get_preferences.usecase import GetPreferencesUsecase
 from profile_service.usecases.get_presigned_url.usecase import GetPresignedUrlNotFoundError, GetPresignedUrlUsecase
 from profile_service.usecases.get_profile.usecase import GetProfileUsecase
+from profile_service.usecases.get_profile_by_id.usecase import GetProfileByIdUsecase
 from profile_service.usecases.set_geo.usecase import SetGeoNotFoundError, SetGeoUsecase
+from profile_service.usecases.set_preferences.usecase import SetPreferencesNotFoundError, SetPreferencesUsecase
 from profile_service.usecases.update_profile.usecase import UpdateProfileNotFoundError, UpdateProfileUsecase
-from profile_service.usecases.delete_photo.usecase import DeletePhotoNotFoundError, DeletePhotoUsecase
 from profile_service.usecases.upload_photo.usecase import UploadPhotoProfileNotFoundError, UploadPhotoUsecase
 
 log = structlog.stdlib.get_logger("profile_service.grpc")
+
 
 _GENDER_TO_PROTO: dict[Gender | None, profile_pb2.Gender.ValueType] = {
     None: profile_pb2.GENDER_UNSPECIFIED,
@@ -36,11 +41,14 @@ _GENDER_FROM_PROTO: dict[int, Gender] = {
 class ProfileServiceHandler(ProfileServiceBase):
     _create_profile_usecase: CreateProfileUsecase
     _get_profile_usecase: GetProfileUsecase
+    _get_profile_by_id_usecase: GetProfileByIdUsecase
     _update_profile_usecase: UpdateProfileUsecase
     _set_geo_usecase: SetGeoUsecase
     _upload_photo_usecase: UploadPhotoUsecase
     _delete_photo_usecase: DeletePhotoUsecase
     _get_presigned_url_usecase: GetPresignedUrlUsecase
+    _set_preferences_usecase: SetPreferencesUsecase
+    _get_preferences_usecase: GetPreferencesUsecase
 
     @override
     @unary
@@ -116,6 +124,43 @@ class ProfileServiceHandler(ProfileServiceBase):
             proto.latitude = response.profile.latitude
         if response.profile.longitude is not None:
             proto.longitude = response.profile.longitude
+        return proto
+
+    @override
+    @unary
+    async def GetProfileById(self, request: profile_pb2.GetProfileByIdRequest) -> profile_pb2.GetProfileByIdResponse:
+        if not request.profile_id:
+            raise GRPCError(Status.INVALID_ARGUMENT, "profile_id is required")
+
+        try:
+            response = await self._get_profile_by_id_usecase.execute(
+                GetProfileByIdUsecase.Request(profile_id=request.profile_id)
+            )
+        except Exception as e:
+            log.exception("unexpected error in GetProfileById", profile_id=request.profile_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
+
+        if response.profile is None:
+            return profile_pb2.GetProfileByIdResponse(found=False)
+
+        p = response.profile
+        proto = profile_pb2.GetProfileByIdResponse(
+            found=True,
+            profile_id=p.id,
+            telegram_id=p.telegram_id,
+            name=p.name or "",
+            age=p.age or 0,
+            city=p.city or "",
+            bio=p.bio or "",
+            gender=_GENDER_TO_PROTO[p.gender],
+            is_active=p.is_active,
+        )
+        if p.latitude is not None:
+            proto.latitude = p.latitude
+        if p.longitude is not None:
+            proto.longitude = p.longitude
+        if p.boost_expires_at is not None:
+            proto.boost_expires_at_seconds = int(p.boost_expires_at.timestamp())
         return proto
 
     @override
@@ -231,3 +276,66 @@ class ProfileServiceHandler(ProfileServiceBase):
             raise GRPCError(Status.INTERNAL, "internal error") from e
 
         return profile_pb2.GetPresignedUrlResponse(url=response.url)
+
+    @override
+    @unary
+    async def SetPreferences(self, request: profile_pb2.SetPreferencesRequest) -> profile_pb2.SetPreferencesResponse:
+        if not request.telegram_id:
+            raise GRPCError(Status.INVALID_ARGUMENT, "telegram_id is required")
+
+        proto_gender_to_pref = {
+            profile_pb2.GENDER_PREF_MALE: GenderPref.MALE,
+            profile_pb2.GENDER_PREF_FEMALE: GenderPref.FEMALE,
+            profile_pb2.GENDER_PREF_ANY: GenderPref.ANY,
+        }
+        gender_pref = proto_gender_to_pref.get(request.gender_pref)
+
+        try:
+            _ = await self._set_preferences_usecase.execute(
+                SetPreferencesUsecase.Request(
+                    telegram_id=request.telegram_id,
+                    age_min=request.age_min or None,
+                    age_max=request.age_max or None,
+                    gender_pref=gender_pref,
+                    max_distance_km=request.max_distance_km or None,
+                )
+            )
+        except SetPreferencesNotFoundError as e:
+            raise GRPCError(Status.NOT_FOUND, str(e)) from e
+        except Exception as e:
+            log.exception("unexpected error in SetPreferences", telegram_id=request.telegram_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
+
+        return profile_pb2.SetPreferencesResponse(success=True)
+
+    @override
+    @unary
+    async def GetPreferences(self, request: profile_pb2.GetPreferencesRequest) -> profile_pb2.GetPreferencesResponse:
+        if not request.telegram_id:
+            raise GRPCError(Status.INVALID_ARGUMENT, "telegram_id is required")
+
+        try:
+            response = await self._get_preferences_usecase.execute(
+                GetPreferencesUsecase.Request(telegram_id=request.telegram_id)
+            )
+        except Exception as e:
+            log.exception("unexpected error in GetPreferences", telegram_id=request.telegram_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
+
+        if response.preferences is None:
+            return profile_pb2.GetPreferencesResponse(found=False)
+
+        p = response.preferences
+        gender_pref_map = {
+            "male": profile_pb2.GENDER_PREF_MALE,
+            "female": profile_pb2.GENDER_PREF_FEMALE,
+            "any": profile_pb2.GENDER_PREF_ANY,
+        }
+        proto = profile_pb2.GetPreferencesResponse(
+            found=True,
+            age_min=p.age_min or 0,
+            age_max=p.age_max or 0,
+            gender_pref=gender_pref_map.get(p.gender_pref.value, profile_pb2.GENDER_PREF_ANY),
+            max_distance_km=p.max_distance_km or 0,
+        )
+        return proto
