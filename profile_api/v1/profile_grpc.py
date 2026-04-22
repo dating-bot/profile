@@ -27,6 +27,10 @@ class ProfileServiceBase(abc.ABC):
         pass
 
     @abc.abstractmethod
+    async def GetProfileById(self, stream: 'grpclib.server.Stream[profile_api.v1.profile_pb2.GetProfileByIdRequest, profile_api.v1.profile_pb2.GetProfileByIdResponse]') -> None:
+        pass
+
+    @abc.abstractmethod
     async def UpdateProfile(self, stream: 'grpclib.server.Stream[profile_api.v1.profile_pb2.UpdateProfileRequest, profile_api.v1.profile_pb2.UpdateProfileResponse]') -> None:
         pass
 
@@ -44,6 +48,14 @@ class ProfileServiceBase(abc.ABC):
 
     @abc.abstractmethod
     async def GetPresignedUrl(self, stream: 'grpclib.server.Stream[profile_api.v1.profile_pb2.GetPresignedUrlRequest, profile_api.v1.profile_pb2.GetPresignedUrlResponse]') -> None:
+        pass
+
+    @abc.abstractmethod
+    async def SetPreferences(self, stream: 'grpclib.server.Stream[profile_api.v1.profile_pb2.SetPreferencesRequest, profile_api.v1.profile_pb2.SetPreferencesResponse]') -> None:
+        pass
+
+    @abc.abstractmethod
+    async def GetPreferences(self, stream: 'grpclib.server.Stream[profile_api.v1.profile_pb2.GetPreferencesRequest, profile_api.v1.profile_pb2.GetPreferencesResponse]') -> None:
         pass
 
     def __mapping__(self) -> typing.Dict[str, grpclib.const.Handler]:
@@ -65,6 +77,12 @@ class ProfileServiceBase(abc.ABC):
                 grpclib.const.Cardinality.UNARY_UNARY,
                 profile_api.v1.profile_pb2.GetProfileRequest,
                 profile_api.v1.profile_pb2.GetProfileResponse,
+            ),
+            '/profile_api.v1.ProfileService/GetProfileById': grpclib.const.Handler(
+                self.GetProfileById,
+                grpclib.const.Cardinality.UNARY_UNARY,
+                profile_api.v1.profile_pb2.GetProfileByIdRequest,
+                profile_api.v1.profile_pb2.GetProfileByIdResponse,
             ),
             '/profile_api.v1.ProfileService/UpdateProfile': grpclib.const.Handler(
                 self.UpdateProfile,
@@ -96,6 +114,18 @@ class ProfileServiceBase(abc.ABC):
                 profile_api.v1.profile_pb2.GetPresignedUrlRequest,
                 profile_api.v1.profile_pb2.GetPresignedUrlResponse,
             ),
+            '/profile_api.v1.ProfileService/SetPreferences': grpclib.const.Handler(
+                self.SetPreferences,
+                grpclib.const.Cardinality.UNARY_UNARY,
+                profile_api.v1.profile_pb2.SetPreferencesRequest,
+                profile_api.v1.profile_pb2.SetPreferencesResponse,
+            ),
+            '/profile_api.v1.ProfileService/GetPreferences': grpclib.const.Handler(
+                self.GetPreferences,
+                grpclib.const.Cardinality.UNARY_UNARY,
+                profile_api.v1.profile_pb2.GetPreferencesRequest,
+                profile_api.v1.profile_pb2.GetPreferencesResponse,
+            ),
         }
 
 
@@ -119,6 +149,12 @@ class ProfileServiceStub:
             '/profile_api.v1.ProfileService/GetProfile',
             profile_api.v1.profile_pb2.GetProfileRequest,
             profile_api.v1.profile_pb2.GetProfileResponse,
+        )
+        self.GetProfileById = grpclib.client.UnaryUnaryMethod(
+            channel,
+            '/profile_api.v1.ProfileService/GetProfileById',
+            profile_api.v1.profile_pb2.GetProfileByIdRequest,
+            profile_api.v1.profile_pb2.GetProfileByIdResponse,
         )
         self.UpdateProfile = grpclib.client.UnaryUnaryMethod(
             channel,
@@ -149,4 +185,16 @@ class ProfileServiceStub:
             '/profile_api.v1.ProfileService/GetPresignedUrl',
             profile_api.v1.profile_pb2.GetPresignedUrlRequest,
             profile_api.v1.profile_pb2.GetPresignedUrlResponse,
+        )
+        self.SetPreferences = grpclib.client.UnaryUnaryMethod(
+            channel,
+            '/profile_api.v1.ProfileService/SetPreferences',
+            profile_api.v1.profile_pb2.SetPreferencesRequest,
+            profile_api.v1.profile_pb2.SetPreferencesResponse,
+        )
+        self.GetPreferences = grpclib.client.UnaryUnaryMethod(
+            channel,
+            '/profile_api.v1.ProfileService/GetPreferences',
+            profile_api.v1.profile_pb2.GetPreferencesRequest,
+            profile_api.v1.profile_pb2.GetPreferencesResponse,
         )

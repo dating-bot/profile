@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from profile_service.domain.photo import Photo
+from profile_service.domain.preferences import GenderPref, Preferences
 from profile_service.domain.profile import Gender, Profile
 
 
@@ -36,6 +37,8 @@ class ProfileRepositoryProtocol[SessionT](Protocol):
     async def create_profile(self, session: SessionT, request: CreateProfileRequest) -> Profile: ...
 
     async def get_profile_by_telegram_id(self, session: SessionT, telegram_id: int) -> Profile | None: ...
+
+    async def get_profile_by_id(self, session: SessionT, profile_id: int) -> Profile | None: ...
 
     @dataclass
     class UpdateProfileRequest:
@@ -77,3 +80,15 @@ class ProfileRepositoryProtocol[SessionT](Protocol):
 
     async def delete_photo_by_id(self, session: SessionT, photo_id: int) -> None:
         """Удалить строку фото (после проверки владельца)."""
+
+    @dataclass
+    class UpsertPreferencesRequest:
+        telegram_id: int
+        age_min: int | None
+        age_max: int | None
+        gender_pref: GenderPref | None
+        max_distance_km: int | None
+
+    async def upsert_preferences(self, session: SessionT, request: UpsertPreferencesRequest) -> Preferences: ...
+
+    async def get_preferences_by_telegram_id(self, session: SessionT, telegram_id: int) -> Preferences | None: ...

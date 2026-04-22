@@ -1,4 +1,7 @@
-from profile_service.domain.photo import Photo
-from profile_service.domain.profile import Gender, Profile
+from profile_service.domain.photo import Photo as Photo
+from profile_service.domain.preferences import GenderPref as GenderPref
+from profile_service.domain.preferences import Preferences as Preferences
+from profile_service.domain.profile import Gender as Gender
+from profile_service.domain.profile import Profile as Profile
 
-__all__ = ["Gender", "Photo", "Profile"]
+__all__ = ["Gender", "GenderPref", "Photo", "Preferences", "Profile"]

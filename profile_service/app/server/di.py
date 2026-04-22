@@ -44,10 +44,13 @@ class UsecaseProvider(dishka.Provider):
 
     create_profile_usecase = dishka.provide(usecases.CreateProfileUsecase)
     get_profile_usecase = dishka.provide(usecases.GetProfileUsecase)
+    get_profile_by_id_usecase = dishka.provide(usecases.GetProfileByIdUsecase)
     update_profile_usecase = dishka.provide(usecases.UpdateProfileUsecase)
     set_geo_usecase = dishka.provide(usecases.SetGeoUsecase)
     upload_photo_usecase = dishka.provide(usecases.UploadPhotoUsecase)
     delete_photo_usecase = dishka.provide(usecases.DeletePhotoUsecase)
+    set_preferences_usecase = dishka.provide(usecases.SetPreferencesUsecase)
+    get_preferences_usecase = dishka.provide(usecases.GetPreferencesUsecase)
 
     @dishka.provide
     def get_presigned_url_usecase(

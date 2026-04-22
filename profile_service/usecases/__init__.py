@@ -1,10 +1,15 @@
 from profile_service.usecases.create_profile.usecase import CreateProfileError as CreateProfileError
 from profile_service.usecases.create_profile.usecase import CreateProfileUsecase as CreateProfileUsecase
+from profile_service.usecases.delete_photo.usecase import DeletePhotoUsecase as DeletePhotoUsecase
 from profile_service.usecases.get_presigned_url.usecase import GetPresignedUrlError as GetPresignedUrlError
 from profile_service.usecases.get_presigned_url.usecase import GetPresignedUrlUsecase as GetPresignedUrlUsecase
+from profile_service.usecases.get_preferences.usecase import GetPreferencesUsecase as GetPreferencesUsecase
 from profile_service.usecases.get_profile.usecase import GetProfileUsecase as GetProfileUsecase
+from profile_service.usecases.get_profile_by_id.usecase import GetProfileByIdUsecase as GetProfileByIdUsecase
 from profile_service.usecases.set_geo.usecase import SetGeoUsecase as SetGeoUsecase
+from profile_service.usecases.set_preferences.usecase import SetPreferencesError as SetPreferencesError
+from profile_service.usecases.set_preferences.usecase import SetPreferencesNotFoundError as SetPreferencesNotFoundError
+from profile_service.usecases.set_preferences.usecase import SetPreferencesUsecase as SetPreferencesUsecase
 from profile_service.usecases.update_profile.usecase import UpdateProfileError as UpdateProfileError
 from profile_service.usecases.update_profile.usecase import UpdateProfileUsecase as UpdateProfileUsecase
-from profile_service.usecases.delete_photo.usecase import DeletePhotoUsecase as DeletePhotoUsecase
 from profile_service.usecases.upload_photo.usecase import UploadPhotoUsecase as UploadPhotoUsecase
