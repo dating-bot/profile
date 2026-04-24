@@ -5,7 +5,9 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from profile_service.domain.profile import Gender, Profile
+from profile_service.protocols.events.protocol import MessageQueueProtocol
 from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
+from profile_service.usecases._profile_events import publish_profile_updated
 
 log = structlog.stdlib.get_logger("profile_service.usecases.CreateProfileUsecase")
 
@@ -24,8 +26,10 @@ class CreateProfileUsecase:
         self,
         *,
         profile_repository: ProfileRepositoryProtocol[AsyncSession],
+        message_queue: MessageQueueProtocol,
     ) -> None:
         self._profile_repository = profile_repository
+        self._message_queue = message_queue
 
     @dataclass
     class Request:
@@ -80,5 +84,10 @@ class CreateProfileUsecase:
                 ),
             )
 
+        await publish_profile_updated(
+            self._message_queue,
+            profile_id=profile.id,
+            telegram_id=request.telegram_id,
+        )
         log.info("profile created", telegram_id=request.telegram_id, profile_id=profile.id)
         return self.Response(profile=profile)

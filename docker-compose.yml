@@ -6,11 +6,13 @@ services:
     container_name: profile-server
     restart: unless-stopped
     volumes:
-      # Docker DNS names for postgres + shared infra (RabbitMQ, MinIO on dating_bot_net).
       - ./config.docker.toml:/app/config.toml:ro
+
     networks:
-      - profile-network
-      - dating_bot
+      profile-network: {}
+      dating_bot:
+        aliases:
+          - profile-server
     command: ["uv", "-q", "run", "python3", "-m", "profile_service"]
     healthcheck:
       test: ["CMD", "grpc_health_probe", "-addr=localhost:50051"]
