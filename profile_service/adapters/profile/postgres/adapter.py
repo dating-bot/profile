@@ -88,6 +88,8 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.city,
                 ProfileORM.location,
                 ProfileORM.ai_quality_score,
+                ProfileORM.is_active,
+                ProfileORM.boost_expires_at,
                 ProfileORM.created_at,
                 ProfileORM.updated_at,
             )
@@ -166,6 +168,8 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.city,
                 ProfileORM.location,
                 ProfileORM.ai_quality_score,
+                ProfileORM.is_active,
+                ProfileORM.boost_expires_at,
                 ProfileORM.created_at,
                 ProfileORM.updated_at,
             )
@@ -203,6 +207,8 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.city,
                 ProfileORM.location,
                 ProfileORM.ai_quality_score,
+                ProfileORM.is_active,
+                ProfileORM.boost_expires_at,
                 ProfileORM.created_at,
                 ProfileORM.updated_at,
             )
@@ -287,7 +293,7 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
 
     @override
     async def delete_photo_by_id(self, session: AsyncSession, photo_id: int) -> None:
-        await session.execute(sa.delete(PhotoORM).where(PhotoORM.id == photo_id))
+        _ = await session.execute(sa.delete(PhotoORM).where(PhotoORM.id == photo_id))
 
     @override
     async def upsert_preferences(

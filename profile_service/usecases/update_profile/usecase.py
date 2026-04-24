@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass
 from typing import final
 
@@ -6,12 +5,11 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from profile_service.domain.profile import Profile
-from profile_service.protocols.events.protocol import MessageQueueProtocol, PushMessage
+from profile_service.protocols.events.protocol import MessageQueueProtocol
 from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
+from profile_service.usecases._profile_events import publish_profile_updated
 
 log = structlog.stdlib.get_logger("profile_service.usecases.UpdateProfileUsecase")
-
-PROFILE_UPDATED_ROUTING_KEY = "profile.updated"
 
 
 class UpdateProfileError(Exception):
@@ -71,12 +69,10 @@ class UpdateProfileUsecase:
                 ),
             )
 
-        await self._message_queue.push(
-            PROFILE_UPDATED_ROUTING_KEY,
-            PushMessage(
-                body=json.dumps({"profile_id": profile.id, "telegram_id": request.telegram_id}).encode(),
-                content_type="application/json",
-            ),
+        await publish_profile_updated(
+            self._message_queue,
+            profile_id=profile.id,
+            telegram_id=request.telegram_id,
         )
 
         log.info("profile updated", telegram_id=request.telegram_id, profile_id=profile.id)

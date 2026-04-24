@@ -42,7 +42,6 @@ class _S3Client(Protocol):
 
 
 def _is_bucket_missing(error: ClientError) -> bool:
-    """True if HeadBucket failed because the bucket does not exist."""
     raw = error.response
     if not isinstance(raw, dict):
         return False

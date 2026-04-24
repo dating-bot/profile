@@ -5,7 +5,9 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from profile_service.domain.preferences import GenderPref, Preferences
+from profile_service.protocols.events.protocol import MessageQueueProtocol
 from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
+from profile_service.usecases._profile_events import publish_profile_updated
 
 log = structlog.stdlib.get_logger("profile_service.usecases.SetPreferencesUsecase")
 
@@ -24,8 +26,10 @@ class SetPreferencesUsecase:
         self,
         *,
         profile_repository: ProfileRepositoryProtocol[AsyncSession],
+        message_queue: MessageQueueProtocol,
     ) -> None:
         self._profile_repository = profile_repository
+        self._message_queue = message_queue
 
     @dataclass
     class Request:
@@ -52,8 +56,20 @@ class SetPreferencesUsecase:
                         max_distance_km=request.max_distance_km,
                     ),
                 )
+                profile = await self._profile_repository.get_profile_by_telegram_id(
+                    session=session,
+                    telegram_id=request.telegram_id,
+                )
+                if profile is None:
+                    msg = f"Profile not found for telegram_id={request.telegram_id}"
+                    raise SetPreferencesNotFoundError(msg)
         except ValueError as e:
             raise SetPreferencesNotFoundError(str(e)) from e
 
+        await publish_profile_updated(
+            self._message_queue,
+            profile_id=profile.id,
+            telegram_id=request.telegram_id,
+        )
         log.info("preferences set", telegram_id=request.telegram_id)
         return self.Response(preferences=preferences)

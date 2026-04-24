@@ -61,11 +61,13 @@ class RabbitMQTopology:
 
 PROFILE_EXCHANGE_NAME = "profile_exchange"
 PROFILE_UPDATED_QUEUE = "profile.updated"
+PHOTO_UPLOADED_QUEUE = "photo.uploaded"
 
 TOPOLOGY_CONFIG = RabbitMQTopologyConfig(
     publish={
         Exchange(PROFILE_EXCHANGE_NAME, ExchangeType.TOPIC, declare=True): [
             Queue(PROFILE_UPDATED_QUEUE, declare=True),
+            Queue(PHOTO_UPLOADED_QUEUE, declare=True),
         ],
     },
     consume={},

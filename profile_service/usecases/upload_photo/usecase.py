@@ -1,3 +1,4 @@
+import json
 import uuid
 from dataclasses import dataclass
 from typing import final
@@ -6,6 +7,8 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from profile_service.domain.photo import Photo
+from profile_service.infra import PHOTO_UPLOADED_QUEUE
+from profile_service.protocols.events.protocol import MessageQueueProtocol, PushMessage
 from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
 from profile_service.protocols.storage.protocol import StorageProtocol
 
@@ -27,9 +30,11 @@ class UploadPhotoUsecase:
         *,
         profile_repository: ProfileRepositoryProtocol[AsyncSession],
         storage: StorageProtocol,
+        message_queue: MessageQueueProtocol,
     ) -> None:
         self._profile_repository = profile_repository
         self._storage = storage
+        self._message_queue = message_queue
 
     @dataclass
     class Request:
@@ -72,6 +77,19 @@ class UploadPhotoUsecase:
                     minio_key=minio_key,
                 ),
             )
+
+        await self._message_queue.push(
+            PHOTO_UPLOADED_QUEUE,
+            PushMessage(
+                body=json.dumps({
+                    "photo_id": photo.id,
+                    "profile_id": profile.id,
+                    "telegram_id": request.telegram_id,
+                    "minio_key": minio_key,
+                }).encode(),
+                content_type="application/json",
+            ),
+        )
 
         log.info("photo uploaded", telegram_id=request.telegram_id, photo_id=photo.id, minio_key=minio_key)
         return self.Response(photo=photo)
