@@ -29,3 +29,11 @@ secret_key = "minioadmin"
 bucket = "profiles"
 secure = false
 presigned_ttl_seconds = 900
+
+[geocoding]
+enabled = false
+base_url = "https://geocode.maps.co"
+api_key = ""
+timeout_seconds = 5.0
+cache_ttl_seconds = 2592000
+cache_max_entries = 50000

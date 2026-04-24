@@ -8,3 +8,5 @@ config.toml
 .pytest_cache/
 dist/
 *.egg-info/
+
+config.docker.toml

@@ -37,6 +37,13 @@ class AdapterProvider(dishka.Provider):
         provides=protocols.MessageQueueProtocol,
     )
 
+    @dishka.provide
+    def geocoding(
+        self,
+        geocoding_config: infra.GeocodingConfig,
+    ) -> protocols.GeocodingProtocol:
+        return adapters.MapsCoGeocodingAdapter(config=geocoding_config)
+
 
 @final
 class UsecaseProvider(dishka.Provider):

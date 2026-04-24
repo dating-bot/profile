@@ -4,6 +4,7 @@ from typing import ClassVar, override
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
 from profile_service.infra.grpc import GrpcServerConfig
+from profile_service.infra.geocoding import GeocodingConfig
 from profile_service.infra.minio import MinIOConfig
 from profile_service.infra.postgres import PostgresConfig
 from profile_service.infra.rabbitmq_connection import RabbitMQConfig
@@ -16,6 +17,7 @@ class GlobalConfig(BaseSettings):
     grpc_server: GrpcServerConfig
     rabbitmq: RabbitMQConfig
     minio: MinIOConfig
+    geocoding: GeocodingConfig = GeocodingConfig()
 
     @classmethod
     def load(cls) -> "GlobalConfig":

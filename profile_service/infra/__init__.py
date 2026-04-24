@@ -1,4 +1,5 @@
 from profile_service.infra.config import GlobalConfig as GlobalConfig
+from profile_service.infra.geocoding import GeocodingConfig as GeocodingConfig
 from profile_service.infra.grpc import GrpcServerConfig as GrpcServerConfig
 from profile_service.infra.minio import MinIOConfig as MinIOConfig
 from profile_service.infra.minio import provide_aioboto3_session as provide_aioboto3_session
