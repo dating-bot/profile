@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from profile_service.domain.profile import Gender, Profile
 from profile_service.protocols.events.protocol import MessageQueueProtocol
+from profile_service.protocols.geocoding.protocol import GeocodingProtocol
 from profile_service.protocols.profile.repository import ProfileRepositoryProtocol
 from profile_service.usecases._profile_events import publish_profile_updated
 
@@ -27,9 +28,11 @@ class CreateProfileUsecase:
         *,
         profile_repository: ProfileRepositoryProtocol[AsyncSession],
         message_queue: MessageQueueProtocol,
+        geocoding: GeocodingProtocol,
     ) -> None:
         self._profile_repository = profile_repository
         self._message_queue = message_queue
+        self._geocoding = geocoding
 
     @dataclass
     class Request:
@@ -52,6 +55,21 @@ class CreateProfileUsecase:
 
     async def execute(self, request: Request) -> Response:
         """Create a new profile. Raises CreateProfileAlreadyExistsError if profile exists."""
+        latitude = request.latitude
+        longitude = request.longitude
+        if latitude is None or longitude is None:
+            log.info("attempting city geocoding on create", telegram_id=request.telegram_id, city=request.city)
+            geo = await self._geocoding.geocode_city(request.city)
+            if geo is not None:
+                latitude, longitude = geo
+                log.info(
+                    "city geocoding applied on create",
+                    telegram_id=request.telegram_id,
+                    city=request.city,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
+
         async with self._profile_repository.context() as session:
             existing = await self._profile_repository.get_profile_by_telegram_id(
                 session=session,
@@ -79,8 +97,8 @@ class CreateProfileUsecase:
                     city=request.city,
                     bio=request.bio,
                     gender=request.gender,
-                    latitude=request.latitude,
-                    longitude=request.longitude,
+                    latitude=latitude,
+                    longitude=longitude,
                 ),
             )
 

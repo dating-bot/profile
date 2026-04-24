@@ -47,6 +47,9 @@ class ProfileRepositoryProtocol[SessionT](Protocol):
         age: int
         city: str
         bio: str
+        replace_location: bool = False
+        latitude: float | None = None
+        longitude: float | None = None
 
     async def update_profile(self, session: SessionT, request: UpdateProfileRequest) -> Profile: ...
 

@@ -144,6 +144,16 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
         session: AsyncSession,
         request: ProfileRepositoryProtocol.UpdateProfileRequest,
     ) -> Profile:
+        values: dict[str, object] = {
+            "name": request.name,
+            "age": request.age,
+            "city": request.city,
+            "bio": request.bio,
+            "updated_at": datetime.now(UTC),
+        }
+        if request.replace_location:
+            values["location"] = _point_wkt(request.latitude, request.longitude)
+
         result = await session.execute(
             sa
             .update(ProfileORM)
@@ -151,13 +161,7 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.user_id
                 == sa.select(UserORM.id).where(UserORM.telegram_id == request.telegram_id).scalar_subquery()
             )
-            .values(
-                name=request.name,
-                age=request.age,
-                city=request.city,
-                bio=request.bio,
-                updated_at=datetime.now(UTC),
-            )
+            .values(**values)
             .returning(
                 ProfileORM.id,
                 ProfileORM.user_id,
