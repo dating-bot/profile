@@ -45,7 +45,10 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - profile-network
+      profile-network: {}
+      dating_bot:
+        aliases:
+          - profile_postgres
 
 volumes:
   postgres-data:

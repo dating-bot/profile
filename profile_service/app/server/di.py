@@ -58,6 +58,7 @@ class UsecaseProvider(dishka.Provider):
     delete_photo_usecase = dishka.provide(usecases.DeletePhotoUsecase)
     set_preferences_usecase = dishka.provide(usecases.SetPreferencesUsecase)
     get_preferences_usecase = dishka.provide(usecases.GetPreferencesUsecase)
+    activate_subscription_usecase = dishka.provide(usecases.ActivateSubscriptionUsecase)
 
     @dishka.provide
     def get_presigned_url_usecase(

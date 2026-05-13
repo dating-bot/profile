@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast, final, override
 
 import sqlalchemy as sa
@@ -90,6 +90,11 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.ai_quality_score,
                 ProfileORM.is_active,
                 ProfileORM.boost_expires_at,
+                ProfileORM.subscription_tier,
+                ProfileORM.subscription_expires_at,
+                ProfileORM.last_telegram_payment_charge_id,
+                ProfileORM.last_provider_payment_charge_id,
+                ProfileORM.last_invoice_payload,
                 ProfileORM.created_at,
                 ProfileORM.updated_at,
             )
@@ -174,6 +179,11 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.ai_quality_score,
                 ProfileORM.is_active,
                 ProfileORM.boost_expires_at,
+                ProfileORM.subscription_tier,
+                ProfileORM.subscription_expires_at,
+                ProfileORM.last_telegram_payment_charge_id,
+                ProfileORM.last_provider_payment_charge_id,
+                ProfileORM.last_invoice_payload,
                 ProfileORM.created_at,
                 ProfileORM.updated_at,
             )
@@ -213,6 +223,11 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 ProfileORM.ai_quality_score,
                 ProfileORM.is_active,
                 ProfileORM.boost_expires_at,
+                ProfileORM.subscription_tier,
+                ProfileORM.subscription_expires_at,
+                ProfileORM.last_telegram_payment_charge_id,
+                ProfileORM.last_provider_payment_charge_id,
+                ProfileORM.last_invoice_payload,
                 ProfileORM.created_at,
                 ProfileORM.updated_at,
             )
@@ -245,6 +260,7 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
                 PhotoORM.minio_key,
                 PhotoORM.is_active,
                 PhotoORM.is_nsfw,
+                PhotoORM.nsfw_score,
                 PhotoORM.created_at,
             )
         )
@@ -363,3 +379,68 @@ class PostgresProfileRepositoryAdapter(ProfileRepositoryProtocol[AsyncSession]):
         )
         orm = result.scalar_one_or_none()
         return orm.to_domain() if orm is not None else None
+
+    @override
+    async def activate_subscription(
+        self,
+        session: AsyncSession,
+        request: ProfileRepositoryProtocol.ActivateSubscriptionRequest,
+    ) -> Profile:
+        result = await session.execute(
+            sa
+            .select(ProfileORM, UserORM.telegram_id)
+            .join(UserORM, UserORM.id == ProfileORM.user_id)
+            .where(UserORM.telegram_id == request.telegram_id)
+        )
+        row = result.one_or_none()
+        if row is None:
+            msg = f"profile not found for telegram_id={request.telegram_id}"
+            raise ValueError(msg)
+
+        profile_orm = cast("ProfileORM", row[0])
+        tg_id = cast("int", row[1])
+
+        # Idempotency: same Telegram charge id should not extend subscription repeatedly.
+        if (
+            request.telegram_payment_charge_id
+            and profile_orm.last_telegram_payment_charge_id == request.telegram_payment_charge_id
+        ):
+            return profile_orm.to_domain(telegram_id=tg_id)
+
+        now = datetime.now(UTC)
+        base = profile_orm.subscription_expires_at or now
+        if base < now:
+            base = now
+        expires_at = base + timedelta(seconds=request.duration_seconds)
+
+        update_values: dict[str, object] = {
+            "subscription_tier": request.tier.value,
+            "subscription_expires_at": expires_at,
+            "updated_at": now,
+        }
+        if request.telegram_payment_charge_id:
+            update_values["last_telegram_payment_charge_id"] = request.telegram_payment_charge_id
+        if request.provider_payment_charge_id:
+            update_values["last_provider_payment_charge_id"] = request.provider_payment_charge_id
+        if request.invoice_payload:
+            update_values["last_invoice_payload"] = request.invoice_payload
+
+        await session.execute(sa.update(ProfileORM).where(ProfileORM.id == profile_orm.id).values(**update_values))
+
+        result = await session.execute(
+            sa
+            .select(ProfileORM, UserORM.telegram_id)
+            .join(UserORM, UserORM.id == ProfileORM.user_id)
+            .where(ProfileORM.id == profile_orm.id)
+        )
+        updated_row = result.one()
+        updated = cast("ProfileORM", updated_row[0]).to_domain(telegram_id=cast("int", updated_row[1]))
+        log.info(
+            "subscription activated",
+            telegram_id=request.telegram_id,
+            tier=request.tier.value,
+            subscription_expires_at=updated.subscription_expires_at.isoformat()
+            if updated.subscription_expires_at
+            else None,
+        )
+        return updated

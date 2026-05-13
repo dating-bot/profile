@@ -9,7 +9,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from profile_service.domain.photo import Photo
 from profile_service.domain.preferences import GenderPref, Preferences
-from profile_service.domain.profile import Gender, Profile
+from profile_service.domain.profile import Gender, Profile, SubscriptionTier
 
 
 class Base(DeclarativeBase):
@@ -55,6 +55,11 @@ class ProfileORM(Base):
     ai_quality_score: Mapped[float | None] = mapped_column(sa.Float(), nullable=True)
     is_active: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, server_default=sa.true())
     boost_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    subscription_tier: Mapped[str] = mapped_column(sa.String(32), nullable=False, server_default="free")
+    subscription_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    last_telegram_payment_charge_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    last_provider_payment_charge_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    last_invoice_payload: Mapped[str | None] = mapped_column(sa.Text(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True),
         nullable=False,
@@ -94,6 +99,11 @@ class ProfileORM(Base):
             ai_quality_score=self.ai_quality_score,
             is_active=self.is_active,
             boost_expires_at=self.boost_expires_at,
+            subscription_tier=SubscriptionTier(self.subscription_tier),
+            subscription_expires_at=self.subscription_expires_at,
+            last_telegram_payment_charge_id=self.last_telegram_payment_charge_id,
+            last_provider_payment_charge_id=self.last_provider_payment_charge_id,
+            last_invoice_payload=self.last_invoice_payload,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -112,6 +122,7 @@ class PhotoORM(Base):
     minio_key: Mapped[str] = mapped_column(sa.String(512), nullable=False)
     is_active: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, server_default=sa.true())
     is_nsfw: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, server_default=sa.false())
+    nsfw_score: Mapped[float] = mapped_column(sa.Float(), nullable=False, server_default=sa.text("0"))
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True),
         nullable=False,
@@ -130,6 +141,7 @@ class PhotoORM(Base):
             minio_key=self.minio_key,
             is_active=self.is_active,
             is_nsfw=self.is_nsfw,
+            nsfw_score=self.nsfw_score,
             created_at=self.created_at,
         )
 

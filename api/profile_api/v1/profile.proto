@@ -13,6 +13,7 @@ service ProfileService {
   rpc GetPresignedUrl(GetPresignedUrlRequest) returns (GetPresignedUrlResponse);
   rpc SetPreferences(SetPreferencesRequest) returns (SetPreferencesResponse);
   rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse);
+  rpc ActivateSubscription(ActivateSubscriptionRequest) returns (ActivateSubscriptionResponse);
 }
 
 message HealthRequest {}
@@ -51,6 +52,8 @@ message GetProfileResponse {
   repeated PhotoInfo photos = 8;
   optional double latitude = 9;
   optional double longitude = 10;
+  SubscriptionTier subscription_tier = 11;
+  optional int64 subscription_expires_at_seconds = 12;
 }
 
 message GetProfileByIdRequest {
@@ -70,6 +73,8 @@ message GetProfileByIdResponse {
   optional double longitude = 10;
   bool is_active = 11;
   int64 boost_expires_at_seconds = 12;
+  SubscriptionTier subscription_tier = 13;
+  optional int64 subscription_expires_at_seconds = 14;
 }
 
 message PhotoInfo {
@@ -140,6 +145,12 @@ enum GenderPref {
   GENDER_PREF_ANY = 3;
 }
 
+enum SubscriptionTier {
+  SUBSCRIPTION_TIER_UNSPECIFIED = 0;
+  SUBSCRIPTION_TIER_FREE = 1;
+  SUBSCRIPTION_TIER_PREMIUM = 2;
+}
+
 message SetPreferencesRequest {
   int64 telegram_id = 1;
   int32 age_min = 2;
@@ -162,4 +173,18 @@ message GetPreferencesResponse {
   int32 age_max = 3;
   GenderPref gender_pref = 4;
   int32 max_distance_km = 5;
+}
+
+message ActivateSubscriptionRequest {
+  int64 telegram_id = 1;
+  SubscriptionTier tier = 2;
+  int64 duration_seconds = 3;
+  string telegram_payment_charge_id = 4;
+  string provider_payment_charge_id = 5;
+  string invoice_payload = 6;
+}
+
+message ActivateSubscriptionResponse {
+  bool success = 1;
+  int64 subscription_expires_at_seconds = 2;
 }

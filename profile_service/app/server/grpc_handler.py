@@ -9,7 +9,11 @@ from profile_api.v1 import profile_pb2
 from profile_api.v1.profile_grpc import ProfileServiceBase
 from profile_service.app.server.utils import unary
 from profile_service.domain.preferences import GenderPref
-from profile_service.domain.profile import Gender
+from profile_service.domain.profile import Gender, SubscriptionTier
+from profile_service.usecases.activate_subscription.usecase import (
+    ActivateSubscriptionNotFoundError,
+    ActivateSubscriptionUsecase,
+)
 from profile_service.usecases.create_profile.usecase import CreateProfileAlreadyExistsError, CreateProfileUsecase
 from profile_service.usecases.delete_photo.usecase import DeletePhotoNotFoundError, DeletePhotoUsecase
 from profile_service.usecases.get_preferences.usecase import GetPreferencesUsecase
@@ -35,6 +39,16 @@ _GENDER_FROM_PROTO: dict[int, Gender] = {
     profile_pb2.GENDER_FEMALE: Gender.FEMALE,
 }
 
+_SUBSCRIPTION_TIER_TO_PROTO: dict[SubscriptionTier, profile_pb2.SubscriptionTier.ValueType] = {
+    SubscriptionTier.FREE: profile_pb2.SUBSCRIPTION_TIER_FREE,
+    SubscriptionTier.PREMIUM: profile_pb2.SUBSCRIPTION_TIER_PREMIUM,
+}
+
+_SUBSCRIPTION_TIER_FROM_PROTO: dict[int, SubscriptionTier] = {
+    profile_pb2.SUBSCRIPTION_TIER_FREE: SubscriptionTier.FREE,
+    profile_pb2.SUBSCRIPTION_TIER_PREMIUM: SubscriptionTier.PREMIUM,
+}
+
 
 @final
 @dataclass(slots=True)
@@ -49,6 +63,7 @@ class ProfileServiceHandler(ProfileServiceBase):
     _get_presigned_url_usecase: GetPresignedUrlUsecase
     _set_preferences_usecase: SetPreferencesUsecase
     _get_preferences_usecase: GetPreferencesUsecase
+    _activate_subscription_usecase: ActivateSubscriptionUsecase
 
     @override
     @unary
@@ -124,6 +139,11 @@ class ProfileServiceHandler(ProfileServiceBase):
             proto.latitude = response.profile.latitude
         if response.profile.longitude is not None:
             proto.longitude = response.profile.longitude
+        proto.subscription_tier = _SUBSCRIPTION_TIER_TO_PROTO.get(
+            response.profile.subscription_tier, profile_pb2.SUBSCRIPTION_TIER_FREE
+        )
+        if response.profile.subscription_expires_at is not None:
+            proto.subscription_expires_at_seconds = int(response.profile.subscription_expires_at.timestamp())
         return proto
 
     @override
@@ -161,6 +181,11 @@ class ProfileServiceHandler(ProfileServiceBase):
             proto.longitude = p.longitude
         if p.boost_expires_at is not None:
             proto.boost_expires_at_seconds = int(p.boost_expires_at.timestamp())
+        proto.subscription_tier = _SUBSCRIPTION_TIER_TO_PROTO.get(
+            p.subscription_tier, profile_pb2.SUBSCRIPTION_TIER_FREE
+        )
+        if p.subscription_expires_at is not None:
+            proto.subscription_expires_at_seconds = int(p.subscription_expires_at.timestamp())
         return proto
 
     @override
@@ -339,3 +364,44 @@ class ProfileServiceHandler(ProfileServiceBase):
             max_distance_km=p.max_distance_km or 0,
         )
         return proto
+
+    @override
+    @unary
+    async def ActivateSubscription(
+        self, request: profile_pb2.ActivateSubscriptionRequest
+    ) -> profile_pb2.ActivateSubscriptionResponse:
+        if not request.telegram_id:
+            raise GRPCError(Status.INVALID_ARGUMENT, "telegram_id is required")
+        if request.duration_seconds <= 0:
+            raise GRPCError(Status.INVALID_ARGUMENT, "duration_seconds must be > 0")
+
+        tier = _SUBSCRIPTION_TIER_FROM_PROTO.get(request.tier)
+        if tier is None:
+            raise GRPCError(Status.INVALID_ARGUMENT, "tier is required")
+
+        try:
+            response = await self._activate_subscription_usecase.execute(
+                ActivateSubscriptionUsecase.Request(
+                    telegram_id=request.telegram_id,
+                    tier=tier,
+                    duration_seconds=request.duration_seconds,
+                    telegram_payment_charge_id=request.telegram_payment_charge_id or None,
+                    provider_payment_charge_id=request.provider_payment_charge_id or None,
+                    invoice_payload=request.invoice_payload or None,
+                )
+            )
+        except ActivateSubscriptionNotFoundError as e:
+            raise GRPCError(Status.NOT_FOUND, str(e)) from e
+        except Exception as e:
+            log.exception("unexpected error in ActivateSubscription", telegram_id=request.telegram_id)
+            raise GRPCError(Status.INTERNAL, "internal error") from e
+
+        expires_at_seconds = (
+            int(response.profile.subscription_expires_at.timestamp())
+            if response.profile.subscription_expires_at is not None
+            else 0
+        )
+        return profile_pb2.ActivateSubscriptionResponse(
+            success=True,
+            subscription_expires_at_seconds=expires_at_seconds,
+        )

@@ -9,6 +9,11 @@ class Gender(StrEnum):
     FEMALE = "female"
 
 
+class SubscriptionTier(StrEnum):
+    FREE = "free"
+    PREMIUM = "premium"
+
+
 class Profile(pydantic.BaseModel):
     id: int = pydantic.Field(description="Profile ID")
     user_id: int = pydantic.Field(description="FK to users.id")
@@ -23,6 +28,17 @@ class Profile(pydantic.BaseModel):
     ai_quality_score: float | None = pydantic.Field(None, description="AI quality score 0–10")
     is_active: bool = pydantic.Field(default=True, description="Whether profile is active")
     boost_expires_at: datetime | None = pydantic.Field(None, description="When boost expires")
+    subscription_tier: SubscriptionTier = pydantic.Field(default=SubscriptionTier.FREE, description="Billing tier")
+    subscription_expires_at: datetime | None = pydantic.Field(
+        None, description="When subscription access expires (UTC)"
+    )
+    last_telegram_payment_charge_id: str | None = pydantic.Field(
+        None, description="Last processed Telegram payment charge id"
+    )
+    last_provider_payment_charge_id: str | None = pydantic.Field(
+        None, description="Last processed provider payment charge id"
+    )
+    last_invoice_payload: str | None = pydantic.Field(None, description="Last processed invoice payload")
     created_at: datetime = pydantic.Field(
         default_factory=lambda: datetime.now(tz=UTC),
         description="Creation timestamp",

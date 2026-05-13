@@ -5,7 +5,7 @@ from typing import Protocol
 
 from profile_service.domain.photo import Photo
 from profile_service.domain.preferences import GenderPref, Preferences
-from profile_service.domain.profile import Gender, Profile
+from profile_service.domain.profile import Gender, Profile, SubscriptionTier
 
 
 class ProfileRepositoryProtocol[SessionT](Protocol):
@@ -95,3 +95,14 @@ class ProfileRepositoryProtocol[SessionT](Protocol):
     async def upsert_preferences(self, session: SessionT, request: UpsertPreferencesRequest) -> Preferences: ...
 
     async def get_preferences_by_telegram_id(self, session: SessionT, telegram_id: int) -> Preferences | None: ...
+
+    @dataclass
+    class ActivateSubscriptionRequest:
+        telegram_id: int
+        tier: SubscriptionTier
+        duration_seconds: int
+        telegram_payment_charge_id: str | None = None
+        provider_payment_charge_id: str | None = None
+        invoice_payload: str | None = None
+
+    async def activate_subscription(self, session: SessionT, request: ActivateSubscriptionRequest) -> Profile: ...

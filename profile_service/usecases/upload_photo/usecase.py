@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import final
 
 import structlog
+import structlog.contextvars
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from profile_service.domain.photo import Photo
@@ -52,6 +53,7 @@ class UploadPhotoUsecase:
 
     async def execute(self, request: Request) -> Response:
         """Store photo in MinIO, then save metadata in DB."""
+        trace_id = str(structlog.contextvars.get_contextvars().get("trace_id") or uuid.uuid4().hex)
         async with self._profile_repository.context() as session:
             profile = await self._profile_repository.get_profile_by_telegram_id(
                 session=session,
@@ -87,6 +89,7 @@ class UploadPhotoUsecase:
                     "telegram_id": request.telegram_id,
                     "minio_key": minio_key,
                 }).encode(),
+                headers={"trace_id": trace_id},
                 content_type="application/json",
             ),
         )
