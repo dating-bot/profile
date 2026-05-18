@@ -7,6 +7,7 @@ import aio_pika.abc
 import structlog
 
 from profile_service.infra.rabbitmq_topology import RabbitMQTopology
+from profile_service.infra.tracing import inject_trace_headers
 from profile_service.protocols.events.protocol import (
     Message,
     MessageQueueChannelError,
@@ -105,9 +106,10 @@ class RabbitMQAdapter(MessageQueueProtocol):
             raise MessageQueueChannelError(msg)
 
         try:
+            headers = inject_trace_headers(message.headers)
             push_msg = aio_pika.Message(
                 body=message.body,
-                headers=message.headers or None,
+                headers=headers or None,
                 content_type=message.content_type,
                 content_encoding=message.content_encoding,
                 delivery_mode=aio_pika.DeliveryMode.PERSISTENT,

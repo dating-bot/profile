@@ -9,6 +9,7 @@ from profile_service.app.server import di
 from profile_service.app.server.grpc_handler import ProfileServiceHandler
 from profile_service.app.server.health import create_health_service
 from profile_service.app.server.utils import configure_logger
+from profile_service.infra.tracing import setup_tracing
 
 log = structlog.stdlib.get_logger("profile_service.server")
 
@@ -36,6 +37,7 @@ async def main() -> None:
         json_mode=False,
         log_level="DEBUG" if config.debug else "INFO",
     )
+    setup_tracing(service_name="profile-service")
     log.info("Starting profile-service")
 
     grpc_handler_instance = await di.container.get(ProfileServiceHandler)

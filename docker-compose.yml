@@ -14,6 +14,9 @@ services:
         aliases:
           - profile-server
     command: ["uv", "-q", "run", "python3", "-m", "profile_service"]
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
     healthcheck:
       test: ["CMD", "grpc_health_probe", "-addr=localhost:50051"]
       interval: 10s
